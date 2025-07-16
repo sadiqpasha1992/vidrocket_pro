@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:vidrocket_pro/providers/ad_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vidrocket_pro/widgets/quality_selection_sheet.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class BrowserScreen extends StatefulWidget {
@@ -56,34 +57,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
     });
 
     try {
-      var yt = YoutubeExplode();
-      var video = await yt.videos.get(widget.url);
-      var manifest = await yt.videos.streamsClient.getManifest(video.id);
-      var muxedStreams = manifest.muxed;
-
       // Show quality selection dialog
-      var selectedStreamInfo = await showDialog<MuxedStreamInfo>(
+      var selectedStreamInfo = await showModalBottomSheet<StreamInfo>(
         context: context,
         builder: (context) {
-          return AlertDialog(
-            title: const Text('Select Quality'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: muxedStreams.length,
-                itemBuilder: (context, index) {
-                  var streamInfo = muxedStreams[index];
-                  return ListTile(
-                    title: Text('${streamInfo.videoQuality.toString()} (${streamInfo.size})'),
-                    onTap: () {
-                      Navigator.pop(context, streamInfo);
-                    },
-                  );
-                },
-              ),
-            ),
-          );
+          return QualitySelectionSheet(videoUrl: widget.url);
         },
       );
 
@@ -94,10 +72,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
         return;
       }
 
+      var yt = YoutubeExplode();
       var stream = yt.videos.streamsClient.get(selectedStreamInfo);
-
+      var video = await yt.videos.get(widget.url);
       var tempDir = await getTemporaryDirectory();
-      var filePath = '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
+      var filePath =
+          '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
 
       var file = File(filePath);
       var output = file.openWrite(mode: FileMode.writeOnlyAppend);
