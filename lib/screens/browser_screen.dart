@@ -6,7 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:vidrocket_pro/providers/ad_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:vidrocket_pro/widgets/quality_selection_sheet.dart';
+import 'package:vidrocket_pro/widgets/quality_selection_dialog.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class BrowserScreen extends StatefulWidget {
@@ -58,10 +59,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
 
     try {
       // Show quality selection dialog
-      var selectedStreamInfo = await showModalBottomSheet<StreamInfo>(
+      var selectedStreamInfo = await showDialog<VideoStreamInfo>(
         context: context,
         builder: (context) {
-          return QualitySelectionSheet(videoUrl: widget.url);
+          return QualitySelectionDialog(videoUrl: widget.url);
         },
       );
 
@@ -73,21 +74,56 @@ class _BrowserScreenState extends State<BrowserScreen> {
       }
 
       var yt = YoutubeExplode();
-      var stream = yt.videos.streamsClient.get(selectedStreamInfo);
+      var manifest = await yt.videos.streamsClient.getManifest(widget.url);
       var video = await yt.videos.get(widget.url);
       var tempDir = await getTemporaryDirectory();
-      var filePath =
-          '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
 
-      var file = File(filePath);
-      var output = file.openWrite(mode: FileMode.writeOnlyAppend);
+      if (selectedStreamInfo is MuxedStreamInfo) {
+        var stream = yt.videos.streamsClient.get(selectedStreamInfo);
+        var filePath =
+            '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
+        var file = File(filePath);
+        var output = file.openWrite(mode: FileMode.writeOnlyAppend);
+        await for (var data in stream) {
+          output.add(data);
+        }
+        await output.close();
+        await ImageGallerySaver.saveFile(filePath);
+      } else if (selectedStreamInfo is VideoOnlyStreamInfo) {
+        var videoStream = yt.videos.streamsClient.get(selectedStreamInfo);
+        var audioStreamInfo = manifest.audioOnly.withHighestBitrate();
+        var audioStream = yt.videos.streamsClient.get(audioStreamInfo);
 
-      await for (var data in stream) {
-        output.add(data);
+        var videoPath =
+            '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
+        var audioPath =
+            '${tempDir.path}/${video.id}.${audioStreamInfo.container.name}';
+        var outputPath = '${tempDir.path}/${video.id}_merged.mp4';
+
+        var videoFile = File(videoPath);
+        var audioFile = File(audioPath);
+
+        var videoOutput = videoFile.openWrite(mode: FileMode.writeOnlyAppend);
+        await for (var data in videoStream) {
+          videoOutput.add(data);
+        }
+        await videoOutput.close();
+
+        var audioOutput = audioFile.openWrite(mode: FileMode.writeOnlyAppend);
+        await for (var data in audioStream) {
+          audioOutput.add(data);
+        }
+        await audioOutput.close();
+
+        var command =
+            '-i "$videoPath" -i "$audioPath" -c:v copy -c:a aac "$outputPath"';
+        await FFmpegKit.execute(command);
+
+        await ImageGallerySaver.saveFile(outputPath);
+
+        await videoFile.delete();
+        await audioFile.delete();
       }
-      await output.close();
-
-      await ImageGallerySaver.saveFile(filePath);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Video downloaded successfully!')),

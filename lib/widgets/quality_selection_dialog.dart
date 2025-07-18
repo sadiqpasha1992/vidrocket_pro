@@ -11,7 +11,7 @@ class QualitySelectionDialog extends StatefulWidget {
 }
 
 class _QualitySelectionDialogState extends State<QualitySelectionDialog> {
-  List<MuxedStreamInfo>? _muxedStreams;
+  List<VideoStreamInfo>? _streams;
   bool _isLoading = true;
 
   @override
@@ -26,7 +26,25 @@ class _QualitySelectionDialogState extends State<QualitySelectionDialog> {
       var video = await yt.videos.get(widget.videoUrl);
       var manifest = await yt.videos.streamsClient.getManifest(video.id);
       setState(() {
-        _muxedStreams = manifest.muxed.sortByVideoQuality();
+        var muxedStreams = manifest.muxed.sortByVideoQuality().reversed.toList();
+        var videoOnlyStreams =
+            manifest.videoOnly.sortByVideoQuality().reversed.toList();
+
+        var streams = <VideoStreamInfo>[];
+        var qualities = <VideoQuality>{};
+
+        for (var stream in muxedStreams) {
+          if (qualities.add(stream.videoQuality)) {
+            streams.add(stream);
+          }
+        }
+
+        for (var stream in videoOnlyStreams) {
+          if (qualities.add(stream.videoQuality)) {
+            streams.add(stream);
+          }
+        }
+        _streams = streams;
         _isLoading = false;
       });
       yt.close();
@@ -52,12 +70,12 @@ class _QualitySelectionDialogState extends State<QualitySelectionDialog> {
               width: double.maxFinite,
               child: ListView.builder(
                 shrinkWrap: true,
-                itemCount: _muxedStreams?.length ?? 0,
+                itemCount: _streams?.length ?? 0,
                 itemBuilder: (context, index) {
-                  var streamInfo = _muxedStreams![index];
+                  var streamInfo = _streams![index];
                   return ListTile(
                     title: Text(
-                        '${streamInfo.videoQuality.toString()} (${streamInfo.size})'),
+                        '${streamInfo.videoQuality.toString().split('.').last} (${streamInfo.size})'),
                     onTap: () {
                       Navigator.pop(context, streamInfo);
                     },
