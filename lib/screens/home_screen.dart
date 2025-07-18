@@ -30,6 +30,12 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('VidRocket Pro'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: () {
+              Navigator.pushNamed(context, '/downloads');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.pushNamed(context, '/settings');

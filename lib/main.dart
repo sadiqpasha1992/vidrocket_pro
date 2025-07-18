@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:vidrocket_pro/providers/ad_provider.dart';
+import 'package:vidrocket_pro/providers/download_provider.dart';
 import 'package:vidrocket_pro/providers/theme_provider.dart';
+import 'package:vidrocket_pro/screens/downloads_screen.dart';
 import 'package:vidrocket_pro/screens/home_screen.dart';
 import 'package:vidrocket_pro/screens/settings_screen.dart';
 import 'package:vidrocket_pro/screens/browser_screen.dart';
@@ -16,6 +18,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AdProvider()),
+        ChangeNotifierProvider(create: (_) => DownloadProvider()),
       ],
       child: const MyApp(),
     ),
@@ -38,6 +41,7 @@ class MyApp extends StatelessWidget {
           routes: {
             '/settings': (context) => const SettingsScreen(),
             '/browser': (context) => BrowserScreen(url: ModalRoute.of(context)!.settings.arguments as String),
+            '/downloads': (context) => const DownloadsScreen(),
           },
         );
       },

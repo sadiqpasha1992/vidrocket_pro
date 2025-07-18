@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:provider/provider.dart';
+import 'package:vidrocket_pro/models/download_model.dart';
 import 'package:vidrocket_pro/providers/ad_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:vidrocket_pro/providers/download_provider.dart';
 import 'package:vidrocket_pro/widgets/quality_selection_dialog.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -23,6 +25,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   bool _isDownloading = false;
 
   Future<void> _downloadVideo() async {
+    if (!mounted) return;
     Provider.of<AdProvider>(context, listen: false).showInterstitialAd();
     var photosStatus = await Permission.photos.request();
     var storageStatus = await Permission.storage.request();
@@ -38,6 +41,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
     } else if (photosStatus.isPermanentlyDenied || storageStatus.isPermanentlyDenied) {
       openAppSettings();
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Storage permission is required to download videos.')),
       );
@@ -45,6 +49,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Future<void> _downloadFromGeneralURL() async {
+    if (!mounted) return;
     // This is a placeholder for a more complex implementation
     // that would be needed to handle various websites.
     ScaffoldMessenger.of(context).showSnackBar(
@@ -53,6 +58,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
   }
 
   Future<void> _downloadYoutubeVideo() async {
+    if (!mounted) return;
     setState(() {
       _isDownloading = true;
     });
@@ -67,6 +73,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       );
 
       if (selectedStreamInfo == null) {
+        if (!mounted) return;
         setState(() {
           _isDownloading = false;
         });
@@ -74,8 +81,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
       }
 
       var yt = YoutubeExplode();
-      var manifest = await yt.videos.streamsClient.getManifest(widget.url);
       var video = await yt.videos.get(widget.url);
+      var downloadProvider = Provider.of<DownloadProvider>(context, listen: false);
+      var downloadId = video.id.value;
+
+      var downloadModel = DownloadModel(
+        id: downloadId,
+        url: widget.url,
+        title: video.title,
+        thumbnail: video.thumbnails.mediumResUrl,
+      );
+      downloadProvider.addDownload(downloadModel);
+
       var tempDir = await getTemporaryDirectory();
 
       if (selectedStreamInfo is MuxedStreamInfo) {
@@ -84,12 +101,24 @@ class _BrowserScreenState extends State<BrowserScreen> {
             '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
         var file = File(filePath);
         var output = file.openWrite(mode: FileMode.writeOnlyAppend);
+        var totalBytes = selectedStreamInfo.size.totalBytes;
+        var receivedBytes = 0;
         await for (var data in stream) {
           output.add(data);
+          receivedBytes += data.length;
+          downloadProvider.updateDownloadProgress(downloadId, receivedBytes / totalBytes);
         }
         await output.close();
-        await ImageGallerySaver.saveFile(filePath);
+
+        var outputPath = '${tempDir.path}/${video.id}_merged.mp4';
+        var command = '-i "$filePath" -c:v copy -c:a aac "$outputPath"';
+        await FFmpegKit.execute(command);
+
+        await ImageGallerySaver.saveFile(outputPath);
+        downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: outputPath);
+        await file.delete();
       } else if (selectedStreamInfo is VideoOnlyStreamInfo) {
+        var manifest = await yt.videos.streamsClient.getManifest(widget.url);
         var videoStream = yt.videos.streamsClient.get(selectedStreamInfo);
         var audioStreamInfo = manifest.audioOnly.withHighestBitrate();
         var audioStream = yt.videos.streamsClient.get(audioStreamInfo);
@@ -104,14 +133,22 @@ class _BrowserScreenState extends State<BrowserScreen> {
         var audioFile = File(audioPath);
 
         var videoOutput = videoFile.openWrite(mode: FileMode.writeOnlyAppend);
+        var totalVideoBytes = selectedStreamInfo.size.totalBytes;
+        var receivedVideoBytes = 0;
         await for (var data in videoStream) {
           videoOutput.add(data);
+          receivedVideoBytes += data.length;
+          downloadProvider.updateDownloadProgress(downloadId, receivedVideoBytes / totalVideoBytes * 0.5);
         }
         await videoOutput.close();
 
         var audioOutput = audioFile.openWrite(mode: FileMode.writeOnlyAppend);
+        var totalAudioBytes = audioStreamInfo.size.totalBytes;
+        var receivedAudioBytes = 0;
         await for (var data in audioStream) {
           audioOutput.add(data);
+          receivedAudioBytes += data.length;
+          downloadProvider.updateDownloadProgress(downloadId, 0.5 + (receivedAudioBytes / totalAudioBytes * 0.5));
         }
         await audioOutput.close();
 
@@ -120,23 +157,28 @@ class _BrowserScreenState extends State<BrowserScreen> {
         await FFmpegKit.execute(command);
 
         await ImageGallerySaver.saveFile(outputPath);
+        downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: outputPath);
 
         await videoFile.delete();
         await audioFile.delete();
       }
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Video downloaded successfully!')),
       );
       yt.close();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error downloading video: $e')),
       );
     } finally {
-      setState(() {
-        _isDownloading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+      }
     }
   }
 
