@@ -114,8 +114,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
         var command = '-i "$filePath" -c:v copy -c:a aac "$outputPath"';
         await FFmpegKit.execute(command);
 
-        await ImageGallerySaver.saveFile(outputPath);
-        downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: outputPath);
+        final result = await ImageGallerySaver.saveFile(outputPath);
+        final newPath = result['filePath'];
+        downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: newPath);
         await file.delete();
       } else if (selectedStreamInfo is VideoOnlyStreamInfo) {
         var manifest = await yt.videos.streamsClient.getManifest(widget.url);
@@ -156,8 +157,9 @@ class _BrowserScreenState extends State<BrowserScreen> {
             '-i "$videoPath" -i "$audioPath" -c:v copy -c:a aac "$outputPath"';
         await FFmpegKit.execute(command);
 
-        await ImageGallerySaver.saveFile(outputPath);
-        downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: outputPath);
+        final result = await ImageGallerySaver.saveFile(outputPath);
+        final newPath = result['filePath'];
+        downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: newPath);
 
         await videoFile.delete();
         await audioFile.delete();

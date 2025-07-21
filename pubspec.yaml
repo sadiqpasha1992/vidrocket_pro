@@ -45,6 +45,7 @@ dependencies:
   video_player: ^2.8.6
   url_launcher: ^6.3.2
   open_filex: ^4.4.2
+  android_intent_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:

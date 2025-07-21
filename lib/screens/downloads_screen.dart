@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
@@ -30,9 +32,22 @@ class DownloadsScreen extends StatelessWidget {
                 subtitle: download.status == DownloadStatus.downloading
                     ? LinearProgressIndicator(value: download.progress)
                     : Text(download.status.toString().split('.').last),
-                onTap: () async {
+onTap: () async {
                   if (download.status == DownloadStatus.completed) {
-                    await OpenFilex.open(download.filePath!);
+                    if (Platform.isAndroid) {
+                      final AndroidIntent intent = AndroidIntent(
+                        action: 'action_view',
+                        data: Uri.parse(download.filePath!).toString(),
+                        package: 'com.google.android.apps.photos',
+                        type: "video/*",
+                      );
+                      await intent.launch();
+                    } else {
+                      await OpenFilex.open(
+                        download.filePath!,
+                        type: 'video/*',
+                      );
+                    }
                   }
                 },
               );
