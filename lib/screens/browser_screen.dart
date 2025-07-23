@@ -12,6 +12,9 @@ import 'package:vidrocket_pro/widgets/custom_nav_bar.dart';
 import 'package:vidrocket_pro/widgets/quality_selection_dialog.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:dio/dio.dart';
+import 'package:html/parser.dart' show parse;
+import 'package:html/dom.dart' as dom;
 
 class BrowserScreen extends StatefulWidget {
   final String url;
@@ -32,14 +35,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
     var storageStatus = await Permission.storage.request();
 
     if (photosStatus.isGranted || storageStatus.isGranted) {
-      if (widget.url.contains('youtube.com') || widget.url.contains('youtu.be')) {
+      if (widget.url.contains('youtube.com') ||
+          widget.url.contains('youtu.be')) {
         await _downloadYoutubeVideo();
+      } else if (widget.url.contains('instagram.com')) {
+        await _downloadInstagramVideo();
       } else {
         // For other websites, we can try to find a video element
         // This is a simplified example and might not work for all sites
         await _downloadFromGeneralURL();
       }
-    } else if (photosStatus.isPermanentlyDenied || storageStatus.isPermanentlyDenied) {
+    } else if (photosStatus.isPermanentlyDenied ||
+        storageStatus.isPermanentlyDenied) {
       openAppSettings();
     } else {
       if (!mounted) return;
@@ -49,12 +56,85 @@ class _BrowserScreenState extends State<BrowserScreen> {
     }
   }
 
+  Future<void> _downloadInstagramVideo() async {
+    if (!mounted) return;
+    setState(() {
+      _isDownloading = true;
+    });
+
+    try {
+      var dio = Dio();
+      var response = await dio.get(widget.url);
+      var document = parse(response.data);
+      var videoElement = document.querySelector('meta[property="og:video"]');
+
+      if (videoElement != null) {
+        var videoUrl = videoElement.attributes['content'];
+        if (videoUrl != null) {
+          var tempDir = await getTemporaryDirectory();
+          var videoId = DateTime.now().millisecondsSinceEpoch.toString();
+          var filePath = '${tempDir.path}/$videoId.mp4';
+
+          var downloadProvider =
+              Provider.of<DownloadProvider>(context, listen: false);
+          var downloadModel = DownloadModel(
+            id: videoId,
+            url: widget.url,
+            title: 'Instagram Video',
+            thumbnail: '',
+          );
+          downloadProvider.addDownload(downloadModel);
+
+          await dio.download(videoUrl, filePath,
+              onReceiveProgress: (received, total) {
+            if (total != -1) {
+              downloadProvider.updateDownloadProgress(
+                  videoId, received / total);
+            }
+          });
+
+          final result = await ImageGallerySaver.saveFile(filePath,
+              name: 'instagram_$videoId');
+          final newPath = result['filePath'];
+          downloadProvider.updateDownloadStatus(
+              videoId, DownloadStatus.completed,
+              filePath: newPath);
+
+          await File(filePath).delete();
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Video downloaded successfully!')),
+          );
+        }
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Could not find video on this Instagram page.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error downloading video: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _downloadFromGeneralURL() async {
     if (!mounted) return;
     // This is a placeholder for a more complex implementation
     // that would be needed to handle various websites.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Download from this website is not supported yet.')),
+      const SnackBar(
+          content: Text('Download from this website is not supported yet.')),
     );
   }
 
