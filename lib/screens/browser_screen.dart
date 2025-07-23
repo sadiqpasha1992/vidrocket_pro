@@ -118,7 +118,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
       if (selectedStreamInfo is MuxedStreamInfo) {
         var stream = yt.videos.streamsClient.get(selectedStreamInfo);
         var filePath =
-            '${tempDir.path}/${video.id}_${quality}.${selectedStreamInfo.container.name}';
+            '${tempDir.path}/${video.id}_$quality.${selectedStreamInfo.container.name}';
         var file = File(filePath);
         var output = file.openWrite(mode: FileMode.writeOnlyAppend);
         var totalBytes = selectedStreamInfo.size.totalBytes;
