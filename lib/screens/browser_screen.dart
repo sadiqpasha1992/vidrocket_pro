@@ -64,11 +64,21 @@ class _BrowserScreenState extends State<BrowserScreen> {
     });
 
     try {
+      var yt = YoutubeExplode();
+      var video = await yt.videos.get(widget.url);
+      var manifest = await yt.videos.streamsClient.getManifest(video.id);
+      var videoStreams = manifest.streams.whereType<VideoStreamInfo>().toList();
+
+      if (!mounted) return;
+
       // Show quality selection dialog
       var selectedStreamInfo = await showDialog<VideoStreamInfo>(
         context: context,
         builder: (context) {
-          return QualitySelectionDialog(videoUrl: widget.url);
+          return QualitySelectionDialog(
+            videoUrl: widget.url,
+            streamInfos: videoStreams,
+          );
         },
       );
 
@@ -80,8 +90,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
         return;
       }
 
-      var yt = YoutubeExplode();
-      var video = await yt.videos.get(widget.url);
       var downloadProvider = Provider.of<DownloadProvider>(context, listen: false);
       var downloadId = video.id.value;
 
@@ -119,7 +127,6 @@ class _BrowserScreenState extends State<BrowserScreen> {
         downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: newPath);
         await file.delete();
       } else if (selectedStreamInfo is VideoOnlyStreamInfo) {
-        var manifest = await yt.videos.streamsClient.getManifest(widget.url);
         var videoStream = yt.videos.streamsClient.get(selectedStreamInfo);
         var audioStreamInfo = manifest.audioOnly.withHighestBitrate();
         var audioStream = yt.videos.streamsClient.get(audioStreamInfo);

@@ -5,7 +5,7 @@ import 'package:vidrocket_pro/providers/ad_provider.dart';
 import 'package:vidrocket_pro/providers/download_provider.dart';
 import 'package:vidrocket_pro/providers/theme_provider.dart';
 import 'package:vidrocket_pro/screens/downloads_screen.dart';
-import 'package:vidrocket_pro/screens/home_screen.dart';
+import 'package:vidrocket_pro/screens/main_screen.dart';
 import 'package:vidrocket_pro/screens/settings_screen.dart';
 import 'package:vidrocket_pro/screens/browser_screen.dart';
 
@@ -37,11 +37,10 @@ class MyApp extends StatelessWidget {
           theme: ThemeData.light(),
           darkTheme: ThemeData.dark(),
           themeMode: themeProvider.themeMode,
-          home: const HomeScreen(),
+          home: const MainScreen(),
           routes: {
             '/settings': (context) => const SettingsScreen(),
             '/browser': (context) => BrowserScreen(url: ModalRoute.of(context)!.settings.arguments as String),
-            '/downloads': (context) => const DownloadsScreen(),
           },
         );
       },

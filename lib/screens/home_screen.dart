@@ -3,14 +3,14 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:vidrocket_pro/providers/ad_provider.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreenContent extends StatefulWidget {
+  const HomeScreenContent({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreenContent> createState() => _HomeScreenContentState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenContentState extends State<HomeScreenContent> {
   final TextEditingController _urlController = TextEditingController();
 
   @override
@@ -25,68 +25,51 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('VidRocket Pro'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download),
-            onPressed: () {
-              Navigator.pushNamed(context, '/downloads');
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextField(
-                    controller: _urlController,
-                    decoration: const InputDecoration(
-                      labelText: 'Enter Video URL',
-                      border: OutlineInputBorder(),
-                    ),
+    return Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextField(
+                  controller: _urlController,
+                  decoration: const InputDecoration(
+                    labelText: 'Enter Video URL',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (_urlController.text.isNotEmpty) {
-                        Provider.of<AdProvider>(context, listen: false).showInterstitialAd();
-                        Navigator.pushNamed(context, '/browser', arguments: _urlController.text);
-                      }
-                    },
-                    child: const Text('Search'),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_urlController.text.isNotEmpty) {
+                      Provider.of<AdProvider>(context, listen: false)
+                          .showInterstitialAd();
+                      Navigator.pushNamed(context, '/browser',
+                          arguments: _urlController.text);
+                    }
+                  },
+                  child: const Text('Search'),
+                ),
+              ],
             ),
           ),
-          Consumer<AdProvider>(
-            builder: (context, adProvider, child) {
-              if (adProvider.isBannerAdReady) {
-                return SizedBox(
-                  width: adProvider.bannerAd!.size.width.toDouble(),
-                  height: adProvider.bannerAd!.size.height.toDouble(),
-                  child: AdWidget(ad: adProvider.bannerAd!),
-                );
-              } else {
-                return const SizedBox.shrink();
-              }
-            },
-          ),
-        ],
-      ),
+        ),
+        Consumer<AdProvider>(
+          builder: (context, adProvider, child) {
+            if (adProvider.isBannerAdReady) {
+              return SizedBox(
+                width: adProvider.bannerAd!.size.width.toDouble(),
+                height: adProvider.bannerAd!.size.height.toDouble(),
+                child: AdWidget(ad: adProvider.bannerAd!),
+              );
+            } else {
+              return const SizedBox.shrink();
+            }
+          },
+        ),
+      ],
     );
   }
 }
