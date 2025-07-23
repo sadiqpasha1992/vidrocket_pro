@@ -76,7 +76,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
         context: context,
         builder: (context) {
           return QualitySelectionDialog(
-            videoUrl: widget.url,
+            videoTitle: video.title,
             streamInfos: videoStreams,
           );
         },
@@ -91,7 +91,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
       }
 
       var downloadProvider = Provider.of<DownloadProvider>(context, listen: false);
-      var downloadId = video.id.value;
+      var downloadId = '${video.id.value}-${selectedStreamInfo.qualityLabel}';
+
+      if (downloadProvider.downloads.any((d) => d.id == downloadId)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This video quality is already downloaded.')),
+        );
+        setState(() {
+          _isDownloading = false;
+        });
+        return;
+      }
 
       var downloadModel = DownloadModel(
         id: downloadId,
@@ -102,11 +113,12 @@ class _BrowserScreenState extends State<BrowserScreen> {
       downloadProvider.addDownload(downloadModel);
 
       var tempDir = await getTemporaryDirectory();
+      var quality = selectedStreamInfo.qualityLabel;
 
       if (selectedStreamInfo is MuxedStreamInfo) {
         var stream = yt.videos.streamsClient.get(selectedStreamInfo);
         var filePath =
-            '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
+            '${tempDir.path}/${video.id}_${quality}.${selectedStreamInfo.container.name}';
         var file = File(filePath);
         var output = file.openWrite(mode: FileMode.writeOnlyAppend);
         var totalBytes = selectedStreamInfo.size.totalBytes;
@@ -118,11 +130,11 @@ class _BrowserScreenState extends State<BrowserScreen> {
         }
         await output.close();
 
-        var outputPath = '${tempDir.path}/${video.id}_merged.mp4';
+        var outputPath = '${tempDir.path}/${video.id}_${quality}_merged.mp4';
         var command = '-i "$filePath" -c:v copy -c:a aac "$outputPath"';
         await FFmpegKit.execute(command);
 
-        final result = await ImageGallerySaver.saveFile(outputPath);
+        final result = await ImageGallerySaver.saveFile(outputPath, name: '${video.title}_$quality');
         final newPath = result['filePath'];
         downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: newPath);
         await file.delete();
@@ -132,10 +144,10 @@ class _BrowserScreenState extends State<BrowserScreen> {
         var audioStream = yt.videos.streamsClient.get(audioStreamInfo);
 
         var videoPath =
-            '${tempDir.path}/${video.id}.${selectedStreamInfo.container.name}';
+            '${tempDir.path}/${video.id}_${quality}_video.${selectedStreamInfo.container.name}';
         var audioPath =
-            '${tempDir.path}/${video.id}.${audioStreamInfo.container.name}';
-        var outputPath = '${tempDir.path}/${video.id}_merged.mp4';
+            '${tempDir.path}/${video.id}_${quality}_audio.${audioStreamInfo.container.name}';
+        var outputPath = '${tempDir.path}/${video.id}_${quality}_merged.mp4';
 
         var videoFile = File(videoPath);
         var audioFile = File(audioPath);
@@ -164,7 +176,7 @@ class _BrowserScreenState extends State<BrowserScreen> {
             '-i "$videoPath" -i "$audioPath" -c:v copy -c:a aac "$outputPath"';
         await FFmpegKit.execute(command);
 
-        final result = await ImageGallerySaver.saveFile(outputPath);
+        final result = await ImageGallerySaver.saveFile(outputPath, name: '${video.title}_$quality');
         final newPath = result['filePath'];
         downloadProvider.updateDownloadStatus(downloadId, DownloadStatus.completed, filePath: newPath);
 
