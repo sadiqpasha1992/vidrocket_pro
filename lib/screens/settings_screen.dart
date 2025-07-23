@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vidrocket_pro/providers/theme_provider.dart';
+import 'package:vidrocket_pro/widgets/custom_nav_bar.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -28,6 +29,18 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: 0,
+        onItemTapped: (index) {
+          if (index == 0) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/', (route) => false);
+          } else if (index == 1) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/', (route) => false);
+          }
+        },
       ),
     );
   }

@@ -8,6 +8,7 @@ import 'package:vidrocket_pro/providers/ad_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:vidrocket_pro/providers/download_provider.dart';
+import 'package:vidrocket_pro/widgets/custom_nav_bar.dart';
 import 'package:vidrocket_pro/widgets/quality_selection_dialog.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -217,6 +218,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
         child: _isDownloading
             ? const CircularProgressIndicator(color: Colors.white)
             : const Icon(Icons.download),
+      ),
+      bottomNavigationBar: CustomNavBar(
+        selectedIndex: 0,
+        onItemTapped: (index) {
+          if (index == 0) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/', (route) => false);
+          } else if (index == 1) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/', (route) => false);
+          }
+        },
       ),
     );
   }
