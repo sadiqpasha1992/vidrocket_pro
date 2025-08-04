@@ -14,7 +14,6 @@ import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:dio/dio.dart';
 import 'package:html/parser.dart' show parse;
-import 'package:html/dom.dart' as dom;
 
 class BrowserScreen extends StatefulWidget {
   final String url;
